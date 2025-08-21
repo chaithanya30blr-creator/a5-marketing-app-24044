@@ -1,0 +1,9 @@
+CREATE TABLE campaigns (
+ campaign_id VARCHAR(255) PRIMARY KEY,
+ campaign_name VARCHAR(255) NOT NULL,
+ platform VARCHAR(50),
+ start_date DATE,
+ cost DECIMAL(10, 2),
+ clicks INTEGER,
+ conversions INTEGER
+);
