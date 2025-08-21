@@ -1,0 +1,124 @@
+# a5-marketing-app-24044import psycopg2
+
+def connect_db():
+    """Establishes a connection to the PostgreSQL database."""
+    try:
+        conn = psycopg2.connect(
+            dbname="campaign_manager",
+            user="PostgreSQL 17",
+            password="Image@01",
+            host="localhost",
+            port="5432"
+        )
+        return conn
+    except psycopg2.OperationalError as e:
+        print(f"Error connecting to database: {e}")
+        return None
+
+def create_campaign(campaign_id, campaign_name, platform, start_date, cost, clicks, conversions):
+    """Inserts a new campaign record into the database (CREATE)."""
+    conn = connect_db()
+    if conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO campaigns (campaign_id, campaign_name, platform, start_date, cost, clicks, conversions)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (campaign_id, campaign_name, platform, start_date, cost, clicks, conversions)
+            )
+            conn.commit()
+            print("Campaign created successfully.")
+        conn.close()
+
+def read_campaigns(platform_filter=None, sort_by=None):
+    """Retrieves campaign data from the database (READ)."""
+    conn = connect_db()
+    if conn:
+        with conn.cursor() as cur:
+            query = "SELECT * FROM campaigns"
+            params = []
+
+            if platform_filter and platform_filter != "All":
+                query += " WHERE platform = %s"
+                params.append(platform_filter)
+
+            if sort_by:
+                sort_columns = {
+                    "Cost": "cost",
+                    "Clicks": "clicks",
+                    "Conversions": "conversions"
+                }
+                if sort_by in sort_columns:
+                    query += f" ORDER BY {sort_columns[sort_by]} DESC"
+
+            cur.execute(query, params)
+            campaigns = cur.fetchall()
+        conn.close()
+        return campaigns
+    return []
+
+def get_platforms():
+    """Retrieves a list of unique platforms from the database."""
+    conn = connect_db()
+    if conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT platform FROM campaigns")
+            platforms = [row[0] for row in cur.fetchall()]
+        conn.close()
+        return ["All"] + platforms
+    return ["All"]
+
+def update_campaign(campaign_id, cost=None, clicks=None, conversions=None):
+    """Updates an existing campaign record (UPDATE)."""
+    conn = connect_db()
+    if conn:
+        with conn.cursor() as cur:
+            updates = []
+            params = []
+            if cost is not None:
+                updates.append("cost = %s")
+                params.append(cost)
+            if clicks is not None:
+                updates.append("clicks = %s")
+                params.append(clicks)
+            if conversions is not None:
+                updates.append("conversions = %s")
+                params.append(conversions)
+
+            if updates:
+                params.append(campaign_id)
+                query = f"UPDATE campaigns SET {', '.join(updates)} WHERE campaign_id = %s"
+                cur.execute(query, params)
+                conn.commit()
+                print("Campaign updated successfully.")
+        conn.close()
+
+def delete_campaign(campaign_id):
+    """Deletes a campaign record (DELETE)."""
+    conn = connect_db()
+    if conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM campaigns WHERE campaign_id = %s", (campaign_id,))
+            conn.commit()
+            print("Campaign deleted successfully.")
+        conn.close()
+
+def get_business_insights():
+    """Retrieves aggregated business insights."""
+    conn = connect_db()
+    if conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*), SUM(cost), AVG(clicks), SUM(clicks) FROM campaigns")
+            result = cur.fetchone()
+        conn.close()
+        if result:
+            total_campaigns, total_cost, avg_clicks, total_clicks = result
+            cost_per_click = total_cost / total_clicks if total_clicks else 0
+            return {
+                "total_campaigns": total_campaigns,
+                "total_cost": total_cost,
+                "avg_clicks": avg_clicks,
+                "cost_per_click": cost_per_click
+            }
+    return {}
